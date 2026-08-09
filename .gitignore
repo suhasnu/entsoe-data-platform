@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data and logs (regenerable, and large)
+data/
+logs/
+
+# dbt build artefacts
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# ML tracking
+mlruns/
+
+.DS_Store
