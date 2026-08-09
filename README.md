@@ -1,7 +1,7 @@
 # entsoe-data-platform
 
 Hourly electricity load, generation mix, and day-ahead prices for European
-bidding zones — ingested from the ENTSO-E Transparency Platform, modelled
+bidding zones, ingested from the ENTSO-E Transparency Platform, modelled
 into a tested warehouse, and served via an API.
 
 **Status:** in development.
