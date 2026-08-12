@@ -9,6 +9,9 @@ dependencies = [
   "structlog>=24.1",
   "pandas>=2.2,<3",
   "tenacity>=8.3,<10",
+  "google-cloud-bigquery>=3.25,<4",
+  "entsoe-py>=0.6.8,<0.7",
+  "pandera[pandas]>=0.20,<0.30",
 ]
 
 [project.optional-dependencies]

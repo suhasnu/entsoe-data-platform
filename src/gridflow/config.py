@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     postgres_db: str = "gridflow"
     postgres_user: str = "gridflow_app"
     postgres_password: str = "change_me_locally"
+    
+    gcp_project_id: str = Field(..., alias="GCP_PROJECT_ID")
+    bq_location: str = Field("EU", alias="BQ_LOCATION")
+    bq_dataset_bronze: str = Field("bronze", alias="BQ_DATASET_BRONZE")
 
     zones: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["DE_LU", "AT", "NL", "FR", "DK_1", "DK_2"]

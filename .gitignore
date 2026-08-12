@@ -24,3 +24,9 @@ dbt/logs/
 mlruns/
 
 .DS_Store
+
+# gcp
+# Credentials
+*-sa.json
+*service-account*.json
+.gcp/
