@@ -12,6 +12,8 @@ dependencies = [
   "google-cloud-bigquery>=3.25,<4",
   "entsoe-py>=0.6.8,<0.7",
   "pandera[pandas]>=0.20,<0.30",
+  "pyarrow>=16.0,<22",
+  "pandas-gbq",
 ]
 
 [project.optional-dependencies]

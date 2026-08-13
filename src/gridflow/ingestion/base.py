@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 import pandas as pd
+from pandera.pandas import DataFrameSchema
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -53,6 +54,7 @@ class RateLimiter:
 
 class Source(ABC):
     name: str
+    schema: DataFrameSchema
 
     def __init__(self, rate_limiter: RateLimiter | None = None) -> None:
         self._limiter = rate_limiter or RateLimiter()
@@ -78,6 +80,7 @@ class Source(ABC):
         log.info("ingest.start", source=self.name, zone=zone_code, day=str(day))
         frame = self._fetch_with_retry(zone_code, start, end)
         frame = frame.assign(zone_code=zone_code, run_id=str(run_id))
+        frame = self.schema.validate(frame)
         log.info("ingest.done", source=self.name, zone=zone_code, rows=len(frame))
 
         return IngestResult(run_id, self.name, zone_code, frame)

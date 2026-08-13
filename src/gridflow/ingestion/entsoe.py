@@ -7,6 +7,7 @@ from entsoe.exceptions import NoMatchingDataError
 
 from gridflow.config import get_settings
 from gridflow.ingestion.base import PermanentSourceError, Source, TransientSourceError
+from gridflow.quality.schemas import GENERATION_SCHEMA, LOAD_SCHEMA, PRICE_SCHEMA
 
 ZONE_TO_AREA = {
     "DE_LU": "DE_LU",
@@ -49,6 +50,7 @@ def _with_resolution(frame: pd.DataFrame) -> pd.DataFrame:
 
 class EntsoeLoadSource(Source):
     name = "entsoe_load"
+    schema = LOAD_SCHEMA
 
     def fetch(self, zone_code: str, start: datetime, end: datetime) -> pd.DataFrame:
         try:
@@ -66,6 +68,7 @@ class EntsoeLoadSource(Source):
 
 class EntsoeGenerationSource(Source):
     name = "entsoe_generation"
+    schema = GENERATION_SCHEMA
 
     def fetch(self, zone_code: str, start: datetime, end: datetime) -> pd.DataFrame:
         try:
@@ -94,6 +97,7 @@ class EntsoeGenerationSource(Source):
 
 class EntsoePriceSource(Source):
     name = "entsoe_day_ahead_price"
+    schema = PRICE_SCHEMA
 
     def fetch(self, zone_code: str, start: datetime, end: datetime) -> pd.DataFrame:
         try:

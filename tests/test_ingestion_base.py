@@ -3,6 +3,7 @@ from datetime import date, datetime
 
 import pandas as pd
 import pytest
+from pandera.pandas import DataFrameSchema
 
 from gridflow.ingestion.base import (
     PermanentSourceError,
@@ -11,9 +12,11 @@ from gridflow.ingestion.base import (
     TransientSourceError,
 )
 
+PERMISSIVE = DataFrameSchema({}, strict=False, coerce=True)
 
 class FlakySource(Source):
     name = "flaky"
+    schema = PERMISSIVE
 
     def __init__(self, fail_times: int) -> None:
         super().__init__(rate_limiter=RateLimiter(calls_per_minute=100_000))
@@ -29,6 +32,7 @@ class FlakySource(Source):
 
 class BrokenSource(Source):
     name = "broken"
+    schema = PERMISSIVE
 
     def fetch(self, zone_code: str, start: datetime, end: datetime) -> pd.DataFrame:
         raise PermanentSourceError("bad credentials")
