@@ -1,9 +1,9 @@
+import os
 from functools import lru_cache
 from typing import Annotated
-import os
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-
 
 
 class Settings(BaseSettings):

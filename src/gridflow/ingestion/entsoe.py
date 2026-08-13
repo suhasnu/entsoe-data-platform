@@ -47,6 +47,10 @@ def _with_resolution(frame: pd.DataFrame) -> pd.DataFrame:
     minutes = int(deltas.mode().iloc[0].total_seconds() // 60) if len(deltas) else 60
     return frame.assign(resolution_minutes=minutes)
 
+def _drop_end_boundary(frame: pd.DataFrame, end: datetime) -> pd.DataFrame:
+    """entsoe-py includes the end timestamp for prices, which would overlap days."""
+    return frame[frame["ts_utc"] < pd.Timestamp(end)].reset_index(drop=True)
+
 
 class EntsoeLoadSource(Source):
     name = "entsoe_load"
@@ -100,13 +104,25 @@ class EntsoePriceSource(Source):
     schema = PRICE_SCHEMA
 
     def fetch(self, zone_code: str, start: datetime, end: datetime) -> pd.DataFrame:
-        try:
-            raw = _client().query_day_ahead_prices(
-                ZONE_TO_AREA[zone_code], start=pd.Timestamp(start), end=pd.Timestamp(end)
-            )
-        except Exception as exc:
-            raise _classify(exc) from exc
+        # Zones on 15 minute market time units publish no hourly price series at
+        # all, so the hourly default returns NoMatchingDataError rather than data.
+        for resolution in ("15min", "60min"):
+            try:
+                raw = _client().query_day_ahead_prices(
+                    ZONE_TO_AREA[zone_code],
+                    start=pd.Timestamp(start),
+                    end=pd.Timestamp(end),
+                    resolution=resolution,
+                )
+                break
+            except NoMatchingDataError:
+                continue
+            except Exception as exc:
+                raise _classify(exc) from exc
+        else:
+            raise PermanentSourceError(f"no price series at any resolution for {zone_code}")
 
         frame = raw.rename("price_eur_mwh").to_frame()
         frame.index = _to_utc(frame.index)
-        return _with_resolution(frame.rename_axis("ts_utc").reset_index())
+        frame = frame.rename_axis("ts_utc").reset_index()
+        return _with_resolution(_drop_end_boundary(frame, end))

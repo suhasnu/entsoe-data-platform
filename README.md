@@ -39,6 +39,13 @@ are preserved. Deduplication happens downstream in dbt.
 tables set `require_partition_filter`, and a query without a date filter is
 rejected rather than run expensively.
 
+**Resolution varies by zone *and* by data type.** DK_1 publishes load hourly but
+generation and day-ahead prices at 15 minutes. DE_LU publishes all three at 15
+minutes. Day-ahead prices for DE_LU and AT are not available hourly at all, so a
+request at the default resolution returns no data rather than an error worth
+retrying. Every bronze row therefore carries its own `resolution_minutes` rather
+than relying on a per-zone lookup.
+
 ## Local setup
 
 ```bash
