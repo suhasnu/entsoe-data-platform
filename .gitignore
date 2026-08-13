@@ -30,3 +30,7 @@ mlruns/
 *-sa.json
 *service-account*.json
 .gcp/
+
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
