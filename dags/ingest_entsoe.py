@@ -3,9 +3,10 @@ from datetime import date, timedelta
 import pendulum
 from airflow.decorators import dag, task
 from airflow.exceptions import AirflowFailException
+
+from gridflow.cli import SOURCES
 from gridflow.ingestion.base import PermanentSourceError
 from gridflow.storage.writers import load_to_bronze
-from gridflow.cli import SOURCES, ingest_day
 
 
 @dag(
@@ -33,7 +34,11 @@ def ingest_entsoe():
             for zone in get_settings().zones
         ]
 
-    @task(map_index_template="{{ task.op_kwargs['job']['source'] }}-{{ task.op_kwargs['job']['zone'] }}")
+    @task(
+        map_index_template=(
+            "{{ task.op_kwargs['job']['source'] }}-{{ task.op_kwargs['job']['zone'] }}"
+        )
+    )
     def ingest_one(job: dict[str, str]) -> dict[str, str]:
         source_cls, table = SOURCES[job["source"]]
         try:
