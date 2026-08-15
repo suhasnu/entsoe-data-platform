@@ -3,6 +3,7 @@ import sys
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import cast
 
 import structlog
 
@@ -12,9 +13,7 @@ def configure_logging(level: str = "INFO", json_output: bool = True) -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
 
     renderer = (
-        structlog.processors.JSONRenderer()
-        if json_output
-        else structlog.dev.ConsoleRenderer()
+        structlog.processors.JSONRenderer() if json_output else structlog.dev.ConsoleRenderer()
     )
 
     structlog.configure(
@@ -25,15 +24,13 @@ def configure_logging(level: str = "INFO", json_output: bool = True) -> None:
             structlog.processors.format_exc_info,
             renderer,
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(
-            getattr(logging, level.upper())
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, level.upper())),
         cache_logger_on_first_use=True,
     )
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
-    return structlog.get_logger(name)
+    return cast(structlog.stdlib.BoundLogger, structlog.get_logger(name))
 
 
 @contextmanager

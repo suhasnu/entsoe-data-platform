@@ -14,6 +14,7 @@ from gridflow.ingestion.base import (
 
 PERMISSIVE = DataFrameSchema({}, strict=False, coerce=True)
 
+
 class FlakySource(Source):
     name = "flaky"
     schema = PERMISSIVE

@@ -37,7 +37,9 @@ def _classify(exc: Exception) -> Exception:
     return exc
 
 
-def _to_utc(index: pd.DatetimeIndex) -> pd.DatetimeIndex:
+def _to_utc(index: pd.Index) -> pd.DatetimeIndex:
+    if not isinstance(index, pd.DatetimeIndex):
+        raise PermanentSourceError(f"expected a time index, got {type(index).__name__}")
     return index.tz_convert("UTC") if index.tz is not None else index.tz_localize("UTC")
 
 
@@ -46,6 +48,7 @@ def _with_resolution(frame: pd.DataFrame) -> pd.DataFrame:
     deltas = frame["ts_utc"].drop_duplicates().sort_values().diff().dropna()
     minutes = int(deltas.mode().iloc[0].total_seconds() // 60) if len(deltas) else 60
     return frame.assign(resolution_minutes=minutes)
+
 
 def _drop_end_boundary(frame: pd.DataFrame, end: datetime) -> pd.DataFrame:
     """entsoe-py includes the end timestamp for prices, which would overlap days."""

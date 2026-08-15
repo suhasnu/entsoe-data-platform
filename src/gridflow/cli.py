@@ -32,18 +32,17 @@ def ingest_day(day: date, zones: list[str], sources: list[str]) -> int:
             except Exception as exc:
                 # One bad zone should not stop the other five.
                 failures += 1
-                log.error("ingest.failed", source=source_name, zone=zone,
-                          day=str(day), error=str(exc))
+                log.error(
+                    "ingest.failed", source=source_name, zone=zone, day=str(day), error=str(exc)
+                )
     return failures
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="gridflow")
-    parser.add_argument("--day", type=date.fromisoformat,
-                        default=date.today() - timedelta(days=1))
+    parser.add_argument("--day", type=date.fromisoformat, default=date.today() - timedelta(days=1))
     parser.add_argument("--zones", nargs="+")
-    parser.add_argument("--sources", nargs="+", choices=list(SOURCES),
-                        default=list(SOURCES))
+    parser.add_argument("--sources", nargs="+", choices=list(SOURCES), default=list(SOURCES))
     args = parser.parse_args()
 
     settings = get_settings()
@@ -52,8 +51,13 @@ def main() -> int:
     zones = args.zones or settings.zones
     failures = ingest_day(args.day, zones, args.sources)
 
-    log.info("ingest.summary", day=str(args.day), zones=len(zones),
-             sources=len(args.sources), failures=failures)
+    log.info(
+        "ingest.summary",
+        day=str(args.day),
+        zones=len(zones),
+        sources=len(args.sources),
+        failures=failures,
+    )
     return 1 if failures else 0
 
 

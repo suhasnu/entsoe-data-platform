@@ -1,4 +1,3 @@
-
 from datetime import UTC, date
 
 import pytest
