@@ -4,8 +4,8 @@ Hourly and quarter-hourly electricity load, generation mix, and day-ahead prices
 for six European bidding zones, ingested from the ENTSO-E Transparency Platform
 into a partitioned BigQuery warehouse.
 
-**Status:** in development. Ingestion and bronze layer working; dbt models,
-orchestration, and serving layer to follow.
+**Status:** in development. Ingestion, warehouse modelling and orchestration
+working; serving layer and observability to follow.
 
 ## Stack
 
@@ -17,6 +17,7 @@ Python 3.11 · BigQuery · dbt · Airflow · Docker · pandera · pytest
   DE_LU, AT, NL, FR, DK_1 and DK_2
 - Validates every frame against a pandera contract before it reaches the warehouse
 - Writes to an append-only bronze layer, partitioned by month and clustered by zone
+- Runs daily in Airflow, fanning out across 18 zone and source combinations with per-task retries and failure isolation
 
 ## Design notes
 
@@ -46,6 +47,12 @@ request at the default resolution returns no data rather than an error worth
 retrying. Every bronze row therefore carries its own `resolution_minutes` rather
 than relying on a per-zone lookup.
 
+**Airflow parallelism has to match the host.** With Docker's default WSL2 memory
+allocation the scheduler could not spawn workers fast enough, and Airflow marked
+queued tasks failed before they ever started, with no start timestamp. Raising
+the WSL memory limit and setting `max_active_tasks_per_dag` to 8 took a run from
+twelve minutes with mostly failures to 42 seconds with none.
+
 ## Local setup
 
 ```bash
@@ -55,6 +62,7 @@ py -3.11 -m venv .venv && .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 cp .env.example .env        # fill in ENTSOE_API_KEY and GCP_PROJECT_ID
 python -m gridflow.storage.migrate
+docker compose up -d        # Airflow at localhost:8080
 pytest
 ```
 
