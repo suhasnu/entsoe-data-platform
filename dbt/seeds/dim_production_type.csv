@@ -1,0 +1,37 @@
+production_type,category,flow_direction,is_renewable,is_dispatchable,emission_factor_kg_co2_mwh
+Biomass,renewable,generation,true,true,230
+Energy storage,storage,generation,false,true,0
+Fossil Brown coal/Lignite,fossil,generation,false,true,1050
+Fossil Coal-derived gas,fossil,generation,false,true,780
+Fossil Gas,fossil,generation,false,true,490
+Fossil Hard coal,fossil,generation,false,true,820
+Fossil Oil,fossil,generation,false,true,650
+Geothermal,renewable,generation,true,true,38
+Hydro Pumped Storage,storage,generation,false,true,0
+Hydro Run-of-river and poundage,renewable,generation,true,false,24
+Hydro Water Reservoir,renewable,generation,true,true,24
+Nuclear,nuclear,generation,false,true,12
+Other,other,generation,false,true,400
+Other renewable,renewable,generation,true,false,50
+Solar,renewable,generation,true,false,48
+Waste,other,generation,false,true,580
+Wind Offshore,renewable,generation,true,false,12
+Wind Onshore,renewable,generation,true,false,11
+Biomass Consumption,renewable,consumption,false,true,0
+Energy storage Consumption,storage,consumption,false,true,0
+Fossil Brown coal/Lignite Consumption,fossil,consumption,false,true,0
+Fossil Coal-derived gas Consumption,fossil,consumption,false,true,0
+Fossil Gas Consumption,fossil,consumption,false,true,0
+Fossil Hard coal Consumption,fossil,consumption,false,true,0
+Fossil Oil Consumption,fossil,consumption,false,true,0
+Geothermal Consumption,renewable,consumption,false,true,0
+Hydro Pumped Storage Consumption,storage,consumption,false,true,0
+Hydro Run-of-river and poundage Consumption,renewable,consumption,false,false,0
+Hydro Water Reservoir Consumption,renewable,consumption,false,true,0
+Nuclear Consumption,nuclear,consumption,false,true,0
+Other Consumption,other,consumption,false,true,0
+Other renewable Consumption,renewable,consumption,false,false,0
+Solar Consumption,renewable,consumption,false,false,0
+Waste Consumption,other,consumption,false,true,0
+Wind Offshore Consumption,renewable,consumption,false,false,0
+Wind Onshore Consumption,renewable,consumption,false,false,0
