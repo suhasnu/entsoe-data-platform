@@ -1,20 +1,72 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: docker/airflow.Dockerfile
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/gcp-sa.json
+    PYTHONPATH: /opt/airflow/src
+  env_file:
+    - .env
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/airflow/src
+    - ./dbt:/opt/airflow/dbt
+    - ./logs:/opt/airflow/logs
+    - ${GCP_KEYFILE_PATH}:/opt/airflow/secrets/gcp-sa.json:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
+
 services:
   postgres:
-    image: timescale/timescaledb:2.15.2-pg16
+    image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - airflow-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
       interval: 5s
-      timeout: 5s
       retries: 12
     restart: unless-stopped
 
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create --username "${AIRFLOW_ADMIN_USER}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD}" \
+          --firstname Suhas --lastname Umesh --role Admin \
+          --email suhas3908@gmail.com || true
+    restart: "no"
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
 volumes:
-  pgdata:
+  airflow-db:
