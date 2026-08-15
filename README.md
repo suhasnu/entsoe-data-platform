@@ -1,5 +1,7 @@
 # entsoe-data-platform
 
+![CI](https://github.com/suhasnu/entsoe-data-platform/actions/workflows/ci.yml/badge.svg)
+
 Hourly and quarter-hourly electricity load, generation mix, and day-ahead prices
 for six European bidding zones, ingested from the ENTSO-E Transparency Platform
 into a partitioned BigQuery warehouse.
@@ -69,6 +71,8 @@ pytest
 Requires an ENTSO-E API key (request from transparency@entsoe.eu) and a Google
 Cloud service account with BigQuery Data Editor and Job User roles.
 
+Docker needs at least 6 GB of memory. On Windows with the WSL2 backend this is
+set in `~/.wslconfig`, not in Docker Desktop's settings panel.
 ## Data licensing
 
 Electricity data © ENTSO-E Transparency Platform, used under its terms of use.
