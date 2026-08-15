@@ -35,7 +35,7 @@ jobs:
           GCP_PROJECT_ID: ci-placeholder
         run: pytest
 
- dbt:
+  dbt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
