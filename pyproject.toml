@@ -15,6 +15,8 @@ dependencies = [
   "pandera[pandas]>=0.20,<0.30",
   "pyarrow>=16.0,<22",
   "pandas-gbq",
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.30,<1",
 ]
 
 [project.optional-dependencies]

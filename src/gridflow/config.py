@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     bq_location: str = Field("EU", alias="BQ_LOCATION")
     bq_dataset_bronze: str = Field("bronze", alias="BQ_DATASET_BRONZE")
     google_application_credentials: str | None = Field(None, alias="GOOGLE_APPLICATION_CREDENTIALS")
+    api_keys_raw: str = Field("", alias="API_KEYS")
+    bq_dataset_marts: str = Field("gridflow_marts", alias="BQ_DATASET_MARTS")
 
     zones: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["DE_LU", "AT", "NL", "FR", "DK_1", "DK_2"]
@@ -37,6 +39,10 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @property
+    def api_keys(self) -> list[str]:
+        return [key.strip() for key in self.api_keys_raw.split(",") if key.strip()]
 
     @property
     def database_url(self) -> str:
