@@ -19,10 +19,10 @@ flowchart LR
         B[(bronze<br/>append-only<br/>partitioned)]
         ST[staging<br/>dedupe · conform]
         M[(marts<br/>fct_grid_hourly)]
-        API[FastAPI<br/>authenticated · paginated]
 
     end
-
+    
+    API[FastAPI<br/>authenticated · paginated]
     A[Airflow<br/>18 mapped tasks daily]
 
     E --> S --> V --> B
@@ -36,7 +36,7 @@ read-only API are working end to end. Observability is next.
 
 ## Stack
 
-Python 3.11 · BigQuery · dbt · Airflow 2.9 · Docker · Pandera · pytest · GitHub Actions
+Python 3.11 · BigQuery · dbt · Airflow 2.9 · FastAPI · Docker · Pandera · pytest · GitHub Actions
 
 ## What it does
 
