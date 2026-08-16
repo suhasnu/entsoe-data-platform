@@ -1,15 +1,17 @@
 from datetime import date, timedelta
 
 import pendulum
+from airflow.datasets import Dataset
 from airflow.decorators import dag, task
 from airflow.exceptions import AirflowFailException
 
 from gridflow.cli import SOURCES
 from gridflow.ingestion.base import PermanentSourceError
 from gridflow.storage.writers import load_to_bronze
-from airflow.datasets import Dataset
 
 BRONZE = Dataset("gridflow://bronze")
+
+
 @dag(
     dag_id="ingest_entsoe",
     schedule="30 6 * * *",
@@ -51,7 +53,7 @@ def ingest_entsoe():
         return job
 
     ingest_one.expand(job=build_jobs())
-    
+
     @task(outlets=[BRONZE], trigger_rule="all_done")
     def publish_bronze() -> None:
         """Signal that bronze has new data, even on partial success."""
