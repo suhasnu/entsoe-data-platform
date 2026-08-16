@@ -26,6 +26,7 @@ dev = [
   "dbt-core>=1.8,<2",
   "dbt-bigquery>=1.8,<2",
   "apache-airflow==2.9.3",
+  "pre-commit>=3.7",
 ]
 
 [project.scripts]
