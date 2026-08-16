@@ -1,53 +1,100 @@
 # entsoe-data-platform
 
-![CI](https://github.com/suhasnu/entsoe-data-platform/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/suhasnu/entsoe-data-platform/actions/workflows/ci.yml/badge.svg?branch=main)
 
-Hourly and quarter-hourly electricity load, generation mix, and day-ahead prices
-for six European bidding zones, ingested from the ENTSO-E Transparency Platform
-into a partitioned BigQuery warehouse.
+Electricity load, generation mix, and day-ahead prices for six European bidding
+zones, ingested from the ENTSO-E Transparency Platform into a partitioned
+BigQuery warehouse, modelled with dbt and orchestrated in Airflow.
 
-**Status:** in development. Ingestion, warehouse modelling and orchestration
-working; serving layer and observability to follow.
+```mermaid
+flowchart LR
+    E[ENTSO-E<br/>Transparency Platform]
+
+    subgraph ingest[Ingestion · Python]
+        S[Source framework<br/>retry · rate limit]
+        V[Pandera contracts]
+    end
+
+    subgraph bq[BigQuery]
+        B[(bronze<br/>append-only<br/>partitioned)]
+        ST[staging<br/>dedupe · conform]
+        M[(marts<br/>fct_grid_hourly)]
+    end
+
+    A[Airflow<br/>18 mapped tasks daily]
+
+    E --> S --> V --> B
+    B -->|dbt| ST --> M
+    A -.orchestrates.-> S
+    A -.triggers.-> ST
+```
+
+**Status:** in development. Ingestion, warehouse modelling and orchestration are
+working end to end. A serving layer and observability are next.
 
 ## Stack
 
-Python 3.11 · BigQuery · dbt · Airflow · Docker · pandera · pytest
+Python 3.11 · BigQuery · dbt · Airflow 2.9 · Docker · Pandera · pytest · GitHub Actions
 
-## What it does today
+## What it does
 
 - Pulls actual load, generation by production type, and day-ahead prices for
   DE_LU, AT, NL, FR, DK_1 and DK_2
-- Validates every frame against a pandera contract before it reaches the warehouse
+- Validates every frame against a Pandera contract before it reaches the warehouse
 - Writes to an append-only bronze layer, partitioned by month and clustered by zone
-- Runs daily in Airflow, fanning out across 18 zone and source combinations with per-task retries and failure isolation
+- Deduplicates revisions and conforms mixed source resolutions to hourly in dbt
+- Models a fact table with renewable share, residual load and carbon intensity,
+  gated by 14 automated data tests
+- Runs daily in Airflow: ingestion fans out across 18 zone and source
+  combinations, then publishes an Airflow Dataset that triggers the dbt build
+  without either DAG referencing the other
+
+Current coverage: 13,096 hourly rows across 91 days and 6 zones.
+
+## Orchestration
+
+![Airflow DAG](docs/images/airflow-grid.png)
+
+Ingestion expands into one task instance per zone and source. Failures are
+isolated per task, so an unavailable feed does not block the rest of the run.
+A three month backfill completed 1,799 task instances with no failures.
+
+## Warehouse lineage
+
+![dbt lineage](docs/images/dbt-lineage.png)
 
 ## Design notes
 
-**Source resolution varies by zone.** DE_LU, AT, NL and FR publish at 15 minute
-resolution; DK_1 and DK_2 at 60. Bronze stores the native grain with a
-`resolution_minutes` column rather than degrading at ingestion, so finer analysis
-stays possible without re-ingesting. Conforming to a common hourly grain happens
+**Resolution varies by zone and by data type.** DK_1 publishes load hourly but
+generation and day-ahead prices at 15 minutes; DE_LU publishes all three at 15
+minutes. Day-ahead prices for DE_LU and AT are not available hourly at all, so a
+request at the default resolution returns no data rather than an error worth
+retrying. Every bronze row therefore carries its own `resolution_minutes` rather
+than relying on a per-zone lookup, and conforming to a common hourly grain happens
 in the staging layer.
 
 **Market days are not always 24 hours.** A trading day runs local midnight to
 local midnight in Europe/Berlin, which is 23 hours on the spring clock change and
-25 on the autumn one. Windows are built timezone-aware and returned in UTC;
-storage is UTC throughout.
+25 on the autumn one. The window is also returned in UTC, because Python performs
+naive arithmetic when subtracting two datetimes that share a `tzinfo` object, so
+the offset change is silently ignored otherwise. That bug was caught by a test
+written before the implementation.
 
-**Bronze is append-only.** Re-running a day writes a new version with a fresh
-`ingested_at` rather than overwriting, so replays are safe and upstream revisions
-are preserved. Deduplication happens downstream in dbt.
+**Bronze is append-only.** ENTSO-E revises published values for days after
+publication, so a re-run writes a new version with a fresh `ingested_at` rather
+than overwriting. Staging resolves this with `row_number()` over the natural key,
+keeping the latest revision. Replays and backfills are therefore safe at any time.
 
 **Partition filters are required.** BigQuery bills on bytes scanned, so bronze
-tables set `require_partition_filter`, and a query without a date filter is
-rejected rather than run expensively.
+tables set `require_partition_filter` and a query without a date predicate is
+rejected rather than run expensively. Making expensive queries impossible is
+more reliable than documenting that they are discouraged.
 
-**Resolution varies by zone *and* by data type.** DK_1 publishes load hourly but
-generation and day-ahead prices at 15 minutes. DE_LU publishes all three at 15
-minutes. Day-ahead prices for DE_LU and AT are not available hourly at all, so a
-request at the default resolution returns no data rather than an error worth
-retrying. Every bronze row therefore carries its own `resolution_minutes` rather
-than relying on a per-zone lookup.
+**Generation and consumption are separate flows.** ENTSO-E reports both for every
+production type. Pumped storage consumption peaks around 6 GW in DE_LU, which is
+electricity leaving the grid to fill reservoirs. Adding it to generation would
+double count energy already counted when it was first produced, so the seed
+carries a `flow_direction` and the fact table filters on it.
 
 **Airflow parallelism has to match the host.** With Docker's default WSL2 memory
 allocation the scheduler could not spawn workers fast enough, and Airflow marked
@@ -73,6 +120,15 @@ Cloud service account with BigQuery Data Editor and Job User roles.
 
 Docker needs at least 6 GB of memory. On Windows with the WSL2 backend this is
 set in `~/.wslconfig`, not in Docker Desktop's settings panel.
+
+## Known gaps
+
+- Rows failing validation raise rather than being quarantined with a reason
+- Marts rebuild in full rather than incrementally, which will not scale past a
+  few million rows
+- dbt in CI validates that models compile, not a full build against a test warehouse
+- No alerting on pipeline failure
+
 ## Data licensing
 
 Electricity data © ENTSO-E Transparency Platform, used under its terms of use.
