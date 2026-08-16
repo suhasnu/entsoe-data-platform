@@ -33,6 +33,7 @@ jobs:
         env:
           ENTSOE_API_KEY: ci-placeholder
           GCP_PROJECT_ID: ci-placeholder
+          API_KEYS: ci-test-key
         run: pytest
 
   dbt:
