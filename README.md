@@ -19,18 +19,20 @@ flowchart LR
         B[(bronze<br/>append-only<br/>partitioned)]
         ST[staging<br/>dedupe · conform]
         M[(marts<br/>fct_grid_hourly)]
+        API[FastAPI<br/>authenticated · paginated]
+
     end
 
     A[Airflow<br/>18 mapped tasks daily]
 
     E --> S --> V --> B
-    B -->|dbt| ST --> M
+    B -->|dbt| ST --> M --> API
     A -.orchestrates.-> S
     A -.triggers.-> ST
 ```
 
-**Status:** in development. Ingestion, warehouse modelling and orchestration are
-working end to end. A serving layer and observability are next.
+**Status:** in development. Ingestion, warehouse modelling, orchestration and a
+read-only API are working end to end. Observability is next.
 
 ## Stack
 
@@ -48,6 +50,8 @@ Python 3.11 · BigQuery · dbt · Airflow 2.9 · Docker · Pandera · pytest · 
 - Runs daily in Airflow: ingestion fans out across 18 zone and source
   combinations, then publishes an Airflow Dataset that triggers the dbt build
   without either DAG referencing the other
+- Serves the marts through a FastAPI layer with API key auth, cursor pagination
+  and auto-generated OpenAPI docs
 
 Current coverage: 13,096 hourly rows across 91 days and 6 zones.
 
@@ -62,6 +66,13 @@ A three month backfill completed 1,799 task instances with no failures.
 ## Warehouse lineage
 
 ![dbt lineage](docs/images/dbt-lineage.png)
+
+## API
+
+![API docs](docs/images/api-docs.png)
+
+Read-only endpoints over the marts, authenticated by API key, with cursor
+pagination and a per-query byte ceiling so a malformed request cannot run up cost.
 
 ## Design notes
 
