@@ -39,6 +39,52 @@ models:
       - name: timezone
         tests:
           - not_null
+  
+  - name: dim_date
+    columns:
+      - name: date_key
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_hour
+    columns:
+      - name: hour_utc
+        tests:
+          - unique
+          - not_null
+
+  - name: fact_grid_hourly_star
+    description: >
+      Narrow fact at one row per zone per hour, with foreign keys to dim_date,
+      dim_hour and dim_zone. Ratios are deliberately excluded and computed as
+      DAX measures, since averaging a percentage across rows gives a wrong answer.
+    columns:
+      - name: zone_code
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_code
+      - name: date_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: hour_utc
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_hour')
+                field: hour_utc
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [zone_code, ts_hour_utc]
 
 seeds:
   - name: dim_production_type
