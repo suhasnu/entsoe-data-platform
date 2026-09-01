@@ -58,6 +58,7 @@ select
 
     -- What dispatchable plant and imports have to cover once wind and solar are in.
     l.load_mw - coalesce(m.renewable_mw, 0) as residual_load_mw,
+    m.total_co2_kg,
 
     case
         when m.total_generation_mw > 0

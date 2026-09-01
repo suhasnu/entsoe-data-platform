@@ -19,5 +19,6 @@ select
     total_generation_mw,
     storage_consumption_mw,
     residual_load_mw,
-    price_eur_mwh
+    price_eur_mwh,
+    total_co2_kg
 from {{ ref('fct_grid_hourly') }}
