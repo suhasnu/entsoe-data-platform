@@ -18,15 +18,17 @@ flowchart LR
     subgraph bq[BigQuery]
         B[(bronze<br/>append-only<br/>partitioned)]
         ST[staging<br/>dedupe · conform]
-        M[(marts<br/>fct_grid_hourly)]
-
+        M[(marts<br/>facts · dimensions)]
     end
-    
+
     API[FastAPI<br/>authenticated · paginated]
+    PBI[Power BI<br/>star schema · DAX measures]
     A[Airflow<br/>18 mapped tasks daily]
 
     E --> S --> V --> B
-    B -->|dbt| ST --> M --> API
+    B -->|dbt| ST --> M
+    M --> API
+    M --> PBI
     A -.orchestrates.-> S
     A -.triggers.-> ST
 ```
@@ -36,7 +38,7 @@ read-only API are working end to end. Observability is next.
 
 ## Stack
 
-Python 3.11 · BigQuery · dbt · Airflow 2.9 · FastAPI · Docker · Pandera · pytest · GitHub Actions
+Python 3.11 · BigQuery · dbt · Airflow 2.9 · FastAPI · Power BI · Docker · Pandera · pytest · GitHub Actions
 
 ## What it does
 
@@ -73,6 +75,20 @@ A three month backfill completed 1,799 task instances with no failures.
 
 Read-only endpoints over the marts, authenticated by API key, with cursor
 pagination and a per-query byte ceiling so a malformed request cannot run up cost.
+
+## Semantic layer and reporting
+
+![Power BI zone comparison](docs/images/powerbi-zone-comparison.png)
+
+A Power BI model over a dbt star schema: `fact_grid_hourly_star` at zone-hour
+grain, with `dim_date`, `dim_hour` and `dim_zone`. Three report pages cover grid
+overview, day-ahead price dynamics, and zone comparison.
+
+Ratios are deliberately excluded from the fact table and computed as DAX measures
+over additive numerators. Averaging a stored `renewable_pct` across rows gives the
+mean of hourly percentages; dividing total renewable by total generation gives the
+share for the selected period. Those are different numbers, and only the second is
+correct at any grain above one hour.
 
 ## Design notes
 
@@ -112,6 +128,19 @@ allocation the scheduler could not spawn workers fast enough, and Airflow marked
 queued tasks failed before they ever started, with no start timestamp. Raising
 the WSL memory limit and setting `max_active_tasks_per_dag` to 8 took a run from
 twelve minutes with mostly failures to 42 seconds with none.
+
+**The conventional peak window no longer contains the peak.** European markets
+define peak as 08:00 to 20:00 CET, but the day-ahead price now peaks in the
+evening ramp, after solar drops off. Measured over three months, market off-peak
+prices exceed market peak prices in DE_LU. The measures follow the market
+definition and the report states the discrepancy rather than redefining the window
+to make the numbers tidy.
+
+**Renewable share is a poor proxy for emissions.** France runs the lowest
+renewable share of the six zones at 26% and the lowest carbon intensity at
+36 g/kWh, because nuclear is not renewable but is nearly carbon free. The
+Netherlands sits at a similar renewable share with 416 g/kWh. Any report ranking
+zones on renewable share alone would invert the emissions picture.
 
 ## Local setup
 

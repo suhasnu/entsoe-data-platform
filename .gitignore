@@ -34,3 +34,6 @@ mlruns/
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+
+#power bi
+*.pbix
