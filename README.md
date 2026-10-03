@@ -131,16 +131,16 @@ twelve minutes with mostly failures to 42 seconds with none.
 
 **The conventional peak window no longer contains the peak.** European markets
 define peak as 08:00 to 20:00 CET, but the day-ahead price now peaks in the
-evening ramp, after solar drops off. Measured over three months, market off-peak
-prices exceed market peak prices in DE_LU. The measures follow the market
-definition and the report states the discrepancy rather than redefining the window
-to make the numbers tidy.
+evening ramp, after solar drops off. Measured over four months, market off-peak
+prices exceed market peak prices by roughly €69/MWh. The measures follow the
+market definition and the report states the discrepancy rather than redefining
+the window to make the numbers tidy.
 
 **Renewable share is a poor proxy for emissions.** France runs the lowest
-renewable share of the six zones at 26% and the lowest carbon intensity at
-36 g/kWh, because nuclear is not renewable but is nearly carbon free. The
-Netherlands sits at a similar renewable share with 416 g/kWh. Any report ranking
-zones on renewable share alone would invert the emissions picture.
+renewable share of the six zones at 27% and the lowest carbon intensity at
+35 g/kWh, because nuclear is not renewable but is nearly carbon free. The
+Netherlands sits at 17% renewable with 410 g/kWh. Any report ranking zones on
+renewable share alone would invert the emissions picture.
 
 ## Local setup
 
