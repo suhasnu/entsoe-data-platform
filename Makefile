@@ -9,6 +9,17 @@ up: ## Start local infrastructure
 down: ## Stop local infrastructure
 	docker compose down
 
+stream-up: ## Start Kafka and the topic browser
+	docker compose --profile streaming up -d
+
+stream-down: ## Stop Kafka without touching Airflow
+	docker compose --profile streaming down
+
+stream-tail: ## Print whatever is on the load topic
+	docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
+	  --bootstrap-server kafka:9092 --topic entsoe.load.raw \
+	  --from-beginning --property print.key=true --max-messages 5
+
 migrate: ## Apply SQL migrations in order
 	@for f in migrations/*.sql; do echo "applying $$f"; \
 	  docker compose exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -v ON_ERROR_STOP=1 -f - < $$f; done
@@ -19,4 +30,4 @@ test: ## Run tests
 lint: ## Lint and type check
 	ruff check . && mypy src
 
-.PHONY: help up down migrate test lint
+.PHONY: help up down stream-up stream-down stream-tail migrate test lint

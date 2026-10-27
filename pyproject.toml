@@ -17,6 +17,7 @@ dependencies = [
   "pandas-gbq",
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.30,<1",
+  "confluent-kafka>=2.5,<3",
 ]
 
 [project.optional-dependencies]
@@ -33,6 +34,7 @@ dev = [
 
 [project.scripts]
 gridflow = "gridflow.cli:main"
+gridflow-produce = "gridflow.streaming.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -58,5 +60,5 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [[tool.mypy.overrides]]
-module = ["entsoe.*"]
+module = ["entsoe.*", "confluent_kafka.*"]
 ignore_missing_imports = true
