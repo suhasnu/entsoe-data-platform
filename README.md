@@ -45,13 +45,13 @@ flowchart LR
     A -.triggers.-> ST
 ```
 
-**Status:** ingestion, warehouse, orchestration and the API work end to end. A
-Kafka path over the same source is in progress, so the two can be compared on
-the same data.
+**Status:** ingestion, warehouse, orchestration and the API work end to end. The
+Kafka and Spark path over the same source runs too. Comparing the two on the
+same data is the next piece.
 
 ## Stack
 
-Python 3.11 · BigQuery · dbt · Airflow 2.9 · Kafka · FastAPI · Power BI · Docker · Pandera · pytest · GitHub Actions
+Python 3.11 · BigQuery · dbt · Airflow 2.9 · Kafka · Spark · FastAPI · Power BI · Docker · Pandera · pytest · GitHub Actions
 
 ## What it does
 
@@ -65,8 +65,10 @@ Python 3.11 · BigQuery · dbt · Airflow 2.9 · Kafka · FastAPI · Power BI ·
 - Runs daily in Airflow across 18 mapped tasks, then triggers the dbt build
   through a Dataset, so neither DAG has to know about the other
 - Serves the marts over FastAPI with key auth and cursor pagination
+- Mirrors the same source onto a Kafka topic, lands it with a consumer group that
+  commits offsets after the write, and windows it in Spark on event time
 
-13,096 hourly rows so far, 91 days across 6 zones.
+14,786 hourly rows so far, 107 days across 6 zones.
 
 ## Orchestration
 
@@ -127,7 +129,7 @@ Keying buys ordering, not balance.
 The two timestamps on every event are far apart on purpose. `ts_utc` comes from
 the reading, `produced_at` from the poll, and in the screenshot above they are 37
 hours apart. Anything windowing on arrival time would drop a whole day into one
-bucket, which is what makes the watermark in the Spark job a real decision later.
+bucket, which is what makes the watermark in the Spark job a real decision.
 
 The consumer has auto commit off and commits offsets after the Parquet write,
 never before. Auto commit runs on a timer and has no idea whether a message was
