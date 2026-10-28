@@ -22,8 +22,12 @@ flowchart LR
     end
 
     subgraph stream[Streaming · opt in]
-        P[Kafka producer]
+        P[Kafka producer<br/>keyed · idempotent]
         K[(entsoe.load.raw<br/>6 partitions)]
+        C[Consumer group<br/>offsets after write]
+        SP[Spark<br/>event time windows]
+        L[(Parquet landing)]
+        H[(Parquet hourly)]
     end
 
     API[FastAPI<br/>authenticated · paginated]
@@ -32,6 +36,8 @@ flowchart LR
 
     E --> S --> V --> B
     E --> P --> K
+    K --> C --> L
+    K --> SP --> H
     B -->|dbt| ST --> M
     M --> API
     M --> PBI
@@ -96,12 +102,14 @@ second is right at any grain above an hour.
 
 A second path over the same source, meant for comparison with the batch one
 rather than as a replacement. A producer polls ENTSO-E and publishes one event
-per zone and interval; a consumer group lands them as partitioned Parquet.
+per zone and interval, a consumer group lands them as partitioned Parquet, and a
+Spark job aggregates the same topic into hourly windows on event time.
 
 ```bash
 docker compose --profile streaming up -d   # Kafka, UI on localhost:8081
 gridflow-produce --zones DE_LU
 gridflow-consume                           # lands to data/stream/load
+make spark-hourly                          # aggregates into hourly windows
 ```
 
 ENTSO-E is not an event stream. The API hands back a whole market day in one
@@ -136,6 +144,24 @@ The producer runs idempotent, which pins `acks=all` and keeps a retry from
 duplicating or reordering, and it raises if `flush()` leaves anything unsent.
 JSON for now; Avro and a schema registry can wait until something depends on the
 schema.
+
+A Spark Structured Streaming job reads the same topic and aggregates load into
+hourly windows on event time. It runs in local mode in a container, because the
+volume here needs nothing more and a real cluster would not fit beside Airflow.
+
+**Spark keeps its own offsets.** Not in a consumer group, in the checkpoint
+directory, alongside the aggregation state. So the hand written consumer and the
+Spark job read the same topic without seeing each other, and deleting the
+checkpoint replays everything regardless of what any group has committed.
+
+**The watermark is the whole decision.** It advances with the largest event time
+seen, never with the clock, and a poll publishes a market day in one go, so it
+jumps to the end of that day the moment the batch lands. Publish an earlier day
+afterwards and those events arrive a day behind the watermark and are discarded.
+The job prints how many it dropped. A file sink also supports append only, so the
+watermark alone decides when a window is final, which means the newest windows
+stay in state rather than being written. Both of those are the trade being made
+visible rather than bugs.
 
 ## Design notes
 
@@ -196,9 +222,12 @@ start, with no start timestamp to show for it.
 - No alerting on failure
 - Kafka has no volume, so topics go on `docker compose down`
 - The landing zone grows a file per batch and is never compacted
-- Days arrive incomplete and get revised later. DK_1 load for 2026-10-25 came
-  with 16 of 25 hourly intervals, and nothing re-ingests a day once loaded.
-  Pandera checks types, ranges and uniqueness, not completeness
+- The Spark job has no test coverage; it is verified by running it
+- Nothing checks that a market day arrived complete, and nothing re-ingests a day
+  once loaded, so a partial publication passes silently and stays that way.
+  DK_1 and DK_2 were two hours short on 2026-08-15, and DK_1 arrived with 16 of
+  25 intervals on 2026-10-25. Pandera checks types, ranges and uniqueness, not
+  completeness
 
 ## Data licensing
 

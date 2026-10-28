@@ -135,5 +135,37 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  spark:
+    image: ${SPARK_IMAGE:-apache/spark:3.5.4}
+    profiles: ["streaming"]
+    # The image user does not own the bind mounted data directory on Windows.
+    user: root
+    working_dir: /opt/gridflow
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_LOAD: entsoe.load.raw
+    volumes:
+      - ./spark:/opt/gridflow/spark
+      - ./data:/opt/gridflow/data
+      - spark-ivy:/opt/gridflow/.ivy2
+    entrypoint:
+      - /opt/spark/bin/spark-submit
+      - --master
+      - local[2]
+      - --driver-memory
+      - 1g
+      - --conf
+      - spark.jars.ivy=/opt/gridflow/.ivy2
+      - --conf
+      - spark.sql.shuffle.partitions=6
+      - --packages
+      - org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.4
+      - spark/hourly_load.py
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   airflow-db:
+  spark-ivy:

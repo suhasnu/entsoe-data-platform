@@ -20,6 +20,9 @@ stream-tail: ## Print whatever is on the load topic
 	  --bootstrap-server kafka:9092 --topic entsoe.load.raw \
 	  --from-beginning --property print.key=true --max-messages 5
 
+spark-hourly: ## Aggregate the load topic into hourly windows
+	docker compose --profile streaming run --rm spark
+
 migrate: ## Apply SQL migrations in order
 	@for f in migrations/*.sql; do echo "applying $$f"; \
 	  docker compose exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -v ON_ERROR_STOP=1 -f - < $$f; done
@@ -30,4 +33,4 @@ test: ## Run tests
 lint: ## Lint and type check
 	ruff check . && mypy src
 
-.PHONY: help up down stream-up stream-down stream-tail migrate test lint
+.PHONY: help up down stream-up stream-down stream-tail spark-hourly migrate test lint
