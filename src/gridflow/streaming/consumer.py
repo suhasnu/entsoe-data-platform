@@ -78,7 +78,13 @@ class EventConsumer:
                 raise ConsumeError(str(message.error()))
 
             idle = 0.0
-            batch.append(json.loads(message.value()))
+            value = message.value()
+            if value is None:
+                # A null value is a tombstone. Nothing to land, but the offset
+                # still has to move past it.
+                continue
+
+            batch.append(json.loads(value))
             if len(batch) >= self._batch_size:
                 yield batch
                 batch = []
