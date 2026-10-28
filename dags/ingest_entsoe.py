@@ -52,8 +52,6 @@ def ingest_entsoe():
             raise AirflowFailException(str(exc)) from exc
         return job
 
-    ingest_one.expand(job=build_jobs())
-
     @task(outlets=[BRONZE], trigger_rule="all_done")
     def publish_bronze() -> None:
         """Signal that bronze has new data, even on partial success."""
