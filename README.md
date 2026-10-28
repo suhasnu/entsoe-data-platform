@@ -95,13 +95,13 @@ second is right at any grain above an hour.
 ![Kafka topic](docs/images/kafka-topic.png)
 
 A second path over the same source, meant for comparison with the batch one
-rather than as a replacement. So far a producer that polls ENTSO-E and publishes
-one event per zone and interval.
+rather than as a replacement. A producer polls ENTSO-E and publishes one event
+per zone and interval; a consumer group lands them as partitioned Parquet.
 
 ```bash
 docker compose --profile streaming up -d   # Kafka, UI on localhost:8081
 gridflow-produce --zones DE_LU
-make stream-tail
+gridflow-consume                           # lands to data/stream/load
 ```
 
 ENTSO-E is not an event stream. The API hands back a whole market day in one
@@ -121,11 +121,21 @@ the reading, `produced_at` from the poll, and in the screenshot above they are 3
 hours apart. Anything windowing on arrival time would drop a whole day into one
 bucket, which is what makes the watermark in the Spark job a real decision later.
 
-`event_id` is a UUID5 over event type, zone and timestamp, so republishing a day
-yields the same ids and a consumer can drop what it has seen. The producer runs
-idempotent, which pins `acks=all` and keeps a retry from duplicating or
-reordering, and it raises if `flush()` leaves anything unsent. JSON for now;
-Avro and a schema registry can wait until something depends on the schema.
+The consumer has auto commit off and commits offsets after the Parquet write,
+never before. Auto commit runs on a timer and has no idea whether a message was
+handled, so a crash in between loses it silently. Committing afterwards turns
+that into redelivery instead, and duplicates are fixable where loss is not.
+
+Nothing is deduplicated on write. A redelivered batch lands as a second file and
+the read collapses it, keeping the latest `produced_at` per `event_id`, which is
+the same rule staging applies to bronze in BigQuery. That works because
+`event_id` is a UUID5 over event type, zone and timestamp, so a republished day
+carries the same ids rather than looking like new data.
+
+The producer runs idempotent, which pins `acks=all` and keeps a retry from
+duplicating or reordering, and it raises if `flush()` leaves anything unsent.
+JSON for now; Avro and a schema registry can wait until something depends on the
+schema.
 
 ## Design notes
 
@@ -184,8 +194,8 @@ start, with no start timestamp to show for it.
 - Marts rebuild in full, which stops scaling past a few million rows
 - dbt in CI only checks that models compile
 - No alerting on failure
-- Kafka has no volume, so topics go on `docker compose down`, and nothing
-  consumes the topic yet
+- Kafka has no volume, so topics go on `docker compose down`
+- The landing zone grows a file per batch and is never compacted
 - Days arrive incomplete and get revised later. DK_1 load for 2026-10-25 came
   with 16 of 25 hourly intervals, and nothing re-ingests a day once loaded.
   Pandera checks types, ranges and uniqueness, not completeness

@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # 29092 is the broker's external listener. Containers use kafka:9092.
     kafka_bootstrap_servers: str = Field("localhost:29092", alias="KAFKA_BOOTSTRAP_SERVERS")
     kafka_topic_load: str = Field("entsoe.load.raw", alias="KAFKA_TOPIC_LOAD")
+    kafka_consumer_group: str = Field("gridflow-landing", alias="KAFKA_CONSUMER_GROUP")
+    stream_landing_path: str = Field("data/stream/load", alias="STREAM_LANDING_PATH")
 
     zones: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["DE_LU", "AT", "NL", "FR", "DK_1", "DK_2"]

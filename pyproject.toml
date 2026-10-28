@@ -33,8 +33,8 @@ dev = [
 ]
 
 [project.scripts]
-gridflow = "gridflow.cli:main"
-gridflow-produce = "gridflow.streaming.cli:main"
+gridflow-produce = "gridflow.streaming.cli:produce"
+gridflow-consume = "gridflow.streaming.cli:consume"
 
 [build-system]
 requires = ["hatchling"]
