@@ -27,11 +27,14 @@ class Settings(BaseSettings):
     google_application_credentials: str | None = Field(None, alias="GOOGLE_APPLICATION_CREDENTIALS")
     api_keys_raw: str = Field("", alias="API_KEYS")
     bq_dataset_marts: str = Field("gridflow_marts", alias="BQ_DATASET_MARTS")
+
     # 29092 is the broker's external listener. Containers use kafka:9092.
     kafka_bootstrap_servers: str = Field("localhost:29092", alias="KAFKA_BOOTSTRAP_SERVERS")
     kafka_topic_load: str = Field("entsoe.load.raw", alias="KAFKA_TOPIC_LOAD")
     kafka_consumer_group: str = Field("gridflow-landing", alias="KAFKA_CONSUMER_GROUP")
     stream_landing_path: str = Field("data/stream/load", alias="STREAM_LANDING_PATH")
+    stream_hourly_path: str = Field("data/stream/hourly", alias="STREAM_HOURLY_PATH")
+    bq_dataset_staging: str = Field("gridflow_staging", alias="BQ_DATASET_STAGING")
 
     zones: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["DE_LU", "AT", "NL", "FR", "DK_1", "DK_2"]

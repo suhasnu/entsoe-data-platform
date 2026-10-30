@@ -165,6 +165,35 @@ watermark alone decides when a window is final, which means the newest windows
 stay in state rather than being written. Both of those are the trade being made
 visible rather than bugs.
 
+**The two paths are compared on the same day, not assumed to agree.**
+
+```bash
+gridflow-compare --day 2026-10-26 --out diff.csv
+```
+
+A full outer join of `stg_load` in BigQuery against the Spark output on zone and
+hour, so neither side can hide the other's gaps. Three kinds of difference show
+up, and each one means something specific.
+
+Measured on 26 October for DE_LU: 24 hours from BigQuery, 21 from Spark, and the
+21 shared hours agree to 7.3e-12 MW. That residue is floating point, the two
+engines summing in a different order, so the streaming path is arithmetically
+correct. The three missing hours are the watermark holding the newest windows
+open. Interval counts matched everywhere.
+
+**Which makes the honest conclusion a negative one.** ENTSO-E publishes a market
+day in one response, hours after the fact, so the freshest a streaming path can
+be is the freshest the publisher is. Batch delivers the complete day; streaming
+delivers 21 of the same 24 hours and calls it low latency. Streaming earns its
+place when a source emits events as they happen. This one does not, and building
+both was the only way to say that with numbers rather than opinion.
+
+One difference the comparison has not surfaced yet, because no revision has
+landed since: the two paths resolve a republished day by different rules. Bronze
+keeps the row with the latest `ingested_at`, while Spark's `dropDuplicates` keeps
+whichever copy of an `event_id` arrived first. When ENTSO-E revises a value the
+batch path will take the new number and the stream path will keep the old one.
+
 ## Design notes
 
 **Market days are not always 24 hours.** A trading day runs local midnight to
@@ -225,6 +254,9 @@ start, with no start timestamp to show for it.
 - Kafka has no volume, so topics go on `docker compose down`
 - The landing zone grows a file per batch and is never compacted
 - The Spark job has no test coverage; it is verified by running it
+- The stream path keeps the first copy of an `event_id` while bronze keeps the
+  latest `ingested_at`, so a revised value diverges between the two until the
+  Spark side is changed to resolve on `produced_at`
 - Nothing checks that a market day arrived complete, and nothing re-ingests a day
   once loaded, so a partial publication passes silently and stays that way.
   DK_1 and DK_2 were two hours short on 2026-08-15, and DK_1 arrived with 16 of

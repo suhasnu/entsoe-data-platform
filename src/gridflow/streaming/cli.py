@@ -5,10 +5,12 @@ from pathlib import Path
 from gridflow.config import get_settings
 from gridflow.ingestion.entsoe import EntsoeLoadSource
 from gridflow.logging import configure_logging, get_logger
+from gridflow.streaming.compare import compare, read_batch_hourly, read_stream_hourly
 from gridflow.streaming.consumer import EventConsumer
 from gridflow.streaming.events import events_from_frame
 from gridflow.streaming.landing import write_batch
 from gridflow.streaming.producer import EventProducer
+from gridflow.timewindows import berlin_day_window
 
 log = get_logger(__name__)
 
@@ -76,4 +78,39 @@ def consume() -> int:
         events=written,
         landing=str(root),
     )
+    return 0
+
+
+def compare_paths() -> int:
+    parser = argparse.ArgumentParser(prog="gridflow-compare")
+    parser.add_argument("--day", type=date.fromisoformat, default=date.today() - timedelta(days=2))
+    parser.add_argument("--zones", nargs="+")
+    parser.add_argument("--tolerance", type=float, default=0.5)
+    parser.add_argument("--out", type=Path, help="write the joined rows to this CSV")
+    args = parser.parse_args()
+
+    settings = get_settings()
+    configure_logging(settings.log_level, json_output=settings.env != "local")
+
+    start, end = berlin_day_window(args.day)
+    zones = args.zones or settings.zones
+
+    batch = read_batch_hourly(start, end, zones)
+    stream = read_stream_hourly(Path(settings.stream_hourly_path))
+    stream = stream[
+        (stream["ts_hour_utc"] >= start)
+        & (stream["ts_hour_utc"] < end)
+        & (stream["zone_code"].isin(zones))
+    ]
+
+    merged, summary = compare(batch, stream, args.tolerance)
+
+    print(f"market day {args.day}, zones {', '.join(zones)}")
+    for name, value in summary.items():
+        print(f"  {name:<24} {value}")
+
+    if args.out:
+        merged.to_csv(args.out, index=False)
+        print(f"  joined rows written to {args.out}")
+
     return 0

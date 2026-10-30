@@ -90,7 +90,10 @@ def main() -> None:
         .agg(
             # Average, not sum. Load is a rate in MW, same as the dbt staging layer.
             F.avg("load_mw").alias("load_mw"),
-            F.count("*").alias("intervals"),
+            # Counts the column, not the row, so a null interval is excluded the
+            # way stg_load excludes it. Otherwise the two paths disagree on count
+            # while agreeing on value, which reads as a bug and is not one.
+            F.count("load_mw").alias("intervals"),
         )
         .select(
             F.col("window.start").alias("ts_hour_utc"),
