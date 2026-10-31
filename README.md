@@ -51,7 +51,7 @@ same data is the next piece.
 
 ## Stack
 
-Python 3.11 · BigQuery · dbt · Airflow 2.9 · Kafka · Spark · FastAPI · Power BI · Docker · Pandera · pytest · GitHub Actions
+Python 3.11 · BigQuery · dbt · Airflow 2.9 · Kafka · Spark · Terraform · FastAPI · Power BI · Docker · Pandera · pytest · GitHub Actions
 
 ## What it does
 
@@ -194,6 +194,42 @@ keeps the row with the latest `ingested_at`, while Spark's `dropDuplicates` keep
 whichever copy of an `event_id` arrived first. When ENTSO-E revises a value the
 batch path will take the new number and the stream path will keep the old one.
 
+## Infrastructure as code
+
+The BigQuery datasets were created by hand, through the console and a SQL
+migration. Terraform adopts them rather than recreating them.
+
+```bash
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars   # add the project id
+terraform -chdir=terraform init
+terraform -chdir=terraform import google_bigquery_dataset.bronze  <project>/bronze
+terraform -chdir=terraform import google_bigquery_dataset.staging <project>/gridflow_staging
+terraform -chdir=terraform import google_bigquery_dataset.marts   <project>/gridflow_marts
+terraform -chdir=terraform plan
+```
+
+**Terraform owns the datasets and nothing inside them.** Table DDL stays with the
+SQL migrations and dbt. Two systems that both believe they own a table is how
+people lose one, so the boundary is drawn at the dataset.
+
+**Every dataset carries `prevent_destroy` and `delete_contents_on_destroy = false`.**
+A `terraform destroy` against a misconfigured workspace would otherwise take the
+whole warehouse, and the only way back is refetching months of data from an API
+that does not keep all of it. Two independent brakes rather than one.
+
+**Importing surfaced drift nobody had recorded.** The first apply updated two
+datasets and was refused on the third. The service account held dataset level
+ownership of the two dbt created, because BigQuery writes the creator into a
+dataset's access list, but only project level `dataEditor` on bronze, which does
+not grant `bigquery.datasets.update`. Three datasets that looked identical had
+different permissions because they were made by different means months apart.
+Nothing was going to reveal that until something tried to reconcile them.
+
+**Credentials come from `GOOGLE_APPLICATION_CREDENTIALS`,** the same service
+account key the pipeline already uses, so there is no second auth path to keep in
+step. State is local and gitignored for now; a GCS backend is the obvious next
+step and needs a bucket the service account cannot currently create.
+
 ## Design notes
 
 **Market days are not always 24 hours.** A trading day runs local midnight to
@@ -259,6 +295,9 @@ start, with no start timestamp to show for it.
 - Marts rebuild in full, which stops scaling past a few million rows
 - dbt in CI only checks that models compile
 - No alerting on failure
+- Terraform state is a local file rather than a GCS backend, and it covers the
+  datasets only. Service accounts, IAM bindings and buckets are still created by
+  hand, because the service account it runs as cannot manage them
 - Kafka has no volume, so topics go on `docker compose down`
 - The landing zone grows a file per batch and is never compacted
 - The Spark job has no test coverage; it is verified by running it

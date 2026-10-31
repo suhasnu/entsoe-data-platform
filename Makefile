@@ -23,6 +23,15 @@ stream-tail: ## Print whatever is on the load topic
 spark-hourly: ## Aggregate the load topic into hourly windows
 	docker compose --profile streaming run --rm spark
 
+tf-init: ## Initialise terraform
+	terraform -chdir=terraform init
+
+tf-plan: ## Show what terraform would change
+	terraform -chdir=terraform plan
+
+tf-apply: ## Apply the terraform plan
+	terraform -chdir=terraform apply
+
 migrate: ## Apply SQL migrations in order
 	@for f in migrations/*.sql; do echo "applying $$f"; \
 	  docker compose exec -T postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -v ON_ERROR_STOP=1 -f - < $$f; done
@@ -33,4 +42,4 @@ test: ## Run tests
 lint: ## Lint and type check
 	ruff check . && mypy src
 
-.PHONY: help up down stream-up stream-down stream-tail spark-hourly migrate test lint
+.PHONY: help up down stream-up stream-down stream-tail spark-hourly tf-init tf-plan tf-apply migrate test lint
