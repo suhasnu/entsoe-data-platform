@@ -218,6 +218,14 @@ renewable share of the six zones at 27% and the lowest carbon intensity at
 Netherlands sits at 17% renewable and 410 g/kWh. Ranking zones on renewable
 share alone inverts the emissions picture.
 
+**Every gap in the data is Danish.** 14 incomplete zone-days out of 624, all of
+them DK_1 and DK_2, on the same seven dates with the same hour counts in both
+zones each time. That is one publisher rather than two feeds. Three are isolated,
+in May, June and August; the other four run consecutively from 24 to 27 October,
+each five or six hours short, so it is a current degradation rather than history.
+No hour ever arrives partial, only absent, which is why the interval count test
+passes and the hours per day test does not. Both were needed to see it.
+
 **The conventional peak window no longer holds the peak.** European markets call
 08:00 to 20:00 CET peak, but day-ahead prices now peak in the evening ramp once
 solar drops off. Over four months, off-peak beat peak by about €69/MWh. The
@@ -254,14 +262,18 @@ start, with no start timestamp to show for it.
 - Kafka has no volume, so topics go on `docker compose down`
 - The landing zone grows a file per batch and is never compacted
 - The Spark job has no test coverage; it is verified by running it
-- The stream path keeps the first copy of an `event_id` while bronze keeps the
-  latest `ingested_at`, so a revised value diverges between the two until the
-  Spark side is changed to resolve on `produced_at`
-- Nothing checks that a market day arrived complete, and nothing re-ingests a day
-  once loaded, so a partial publication passes silently and stays that way.
-  DK_1 and DK_2 were two hours short on 2026-08-15, and DK_1 arrived with 16 of
-  25 intervals on 2026-10-25. Pandera checks types, ranges and uniqueness, not
-  completeness
+- The stream path cannot resolve a revision. `event_id` identifies a measurement,
+  so a revised value arrives under the same id with different content, and
+  `dropDuplicates` keeps whichever copy came first. Bronze keeps the latest
+  `ingested_at` and the Parquet landing keeps the latest `produced_at`, so both
+  of those are right and Spark is not. Structured Streaming has no "keep the
+  newest by another column" deduplication, and a plain Parquet sink cannot update
+  a row it already wrote. The real fixes are a log compacted topic keyed on the
+  measurement, or a sink that supports merge such as Delta or Iceberg. The
+  comparison tool reports the divergence as `load_disagreements`
+- Incomplete days are detected but not repaired. Two dbt tests warn when an hour
+  holds the wrong number of intervals or a market day the wrong number of hours,
+  but nothing re-ingests a day once loaded, so a gap stays one
 
 ## Data licensing
 
