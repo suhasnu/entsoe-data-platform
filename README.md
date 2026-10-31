@@ -33,6 +33,7 @@ flowchart LR
     API[FastAPI<br/>authenticated · paginated]
     PBI[Power BI<br/>star schema · DAX measures]
     A[Airflow<br/>18 mapped tasks daily]
+    TF[Terraform<br/>datasets · labels]
 
     E --> S --> V --> B
     E --> P --> K
@@ -43,11 +44,12 @@ flowchart LR
     M --> PBI
     A -.orchestrates.-> S
     A -.triggers.-> ST
+    TF -.provisions.-> bq
 ```
 
-**Status:** ingestion, warehouse, orchestration and the API work end to end. The
-Kafka and Spark path over the same source runs too. Comparing the two on the
-same data is the next piece.
+**Status:** the batch pipeline, the Kafka and Spark path over the same source,
+and the comparison between them all run. The BigQuery datasets are managed in
+Terraform. Containerising for Kubernetes is the next piece.
 
 ## Stack
 
@@ -67,6 +69,8 @@ Python 3.11 · BigQuery · dbt · Airflow 2.9 · Kafka · Spark · Terraform · 
 - Serves the marts over FastAPI with key auth and cursor pagination
 - Mirrors the same source onto a Kafka topic, lands it with a consumer group that
   commits offsets after the write, and windows it in Spark on event time
+- Warns when an hour or a market day arrives short, which no other check catches
+- Manages the BigQuery datasets in Terraform, imported rather than recreated
 
 14,786 hourly rows so far, 107 days across 6 zones.
 
